@@ -10,6 +10,8 @@
         <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
         <link rel="stylesheet" href="css/qgis2web.css">
         <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/filter.css">
+<link rel="stylesheet" href="css/nouislider.min.css">
         <link rel="stylesheet" href="css/leaflet.photon.css">
         <style>
         html, body, #map {
@@ -35,10 +37,18 @@
         <script src="js/labelgun.min.js"></script>
         <script src="js/labels.js"></script>
         <script src="js/leaflet.photon.js"></script>
+        <script src="js/tailDT.js"></script>
+<script src="js/nouislider.min.js"></script>
+<script src="js/wNumb.js"></script>
         <script src="data/District_2.js"></script>
         <script src="data/County_3.js"></script>
         <script src="data/NaFAAColdstorage_4.js"></script>
         <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+            highlightLayer.openPopup();
+        }
         var map = L.map('map', {
             zoomControl:false, maxZoom:28, minZoom:1
         }).fitBounds([[4.1521370529451795,-12.103589369035243],[8.575025162373716,-6.925439777048597]]);
@@ -149,6 +159,18 @@
         layer_OpenStreetMap_1;
         map.addLayer(layer_OpenStreetMap_1);
         function pop_District_2(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
             var popupContent = '<table>\
                     <tr>\
                         <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
@@ -200,6 +222,18 @@
         });
         bounds_group.addLayer(layer_District_2);
         function pop_County_3(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
             var popupContent = '<table>\
                     <tr>\
                         <td colspan="2">' + (feature.properties['county'] !== null ? autolinker.link(String(feature.properties['county']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
@@ -249,6 +283,18 @@
         bounds_group.addLayer(layer_County_3);
         map.addLayer(layer_County_3);
         function pop_NaFAAColdstorage_4(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
             var popupContent = '<table>\
                     <tr>\
                         <th scope="row">county</th>\
@@ -481,6 +527,240 @@
               addLabel(layer, i);
               i++;
         });
+        var mapDiv = document.getElementById('map');
+        var row = document.createElement('div');
+        row.className="row";
+        row.id="all";
+        row.style.height = "100%";
+        var col1 = document.createElement('div');
+        col1.className="col9";
+        col1.id = "mapWindow";
+        col1.style.height = "99%";
+        col1.style.width = "80%";
+        col1.style.display = "inline-block";
+        var col2 = document.createElement('div');
+        col2.className="col3";
+        col2.id = "menu";
+        col2.style.display = "inline-block";
+        mapDiv.parentNode.insertBefore(row, mapDiv);
+        document.getElementById("all").appendChild(col1);
+        document.getElementById("all").appendChild(col2);
+        col1.appendChild(mapDiv)
+        var Filters = {"faci_typ": "str","owner_nati": "str","owner_type": "str"};
+        function filterFunc() {
+          map.eachLayer(function(lyr){
+          if ("options" in lyr && "dataVar" in lyr["options"]){
+            features = this[lyr["options"]["dataVar"]].features.slice(0);
+            try{
+              for (key in Filters){
+                keyS = key.replace(/[^a-zA-Z0-9_]/g, "")
+                if (Filters[key] == "str" || Filters[key] == "bool"){
+                  var selection = [];
+                  var options = document.getElementById("sel_" + keyS).options
+                  for (var i=0; i < options.length; i++) {
+                    if (options[i].selected) selection.push(options[i].value);
+                  }
+                    try{
+                      if (key in features[0].properties){
+                        for (i = features.length - 1;
+                          i >= 0; --i){
+                          if (selection.indexOf(
+                          features[i].properties[key])<0
+                          && selection.length>0) {
+                          features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                  }
+                }
+                if (Filters[key] == "int"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (parseInt(features[i].properties[key])
+                          < sliderVals[0]
+                          || parseInt(features[i].properties[key])
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "real"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (features[i].properties[key]
+                          < sliderVals[0]
+                          || features[i].properties[key]
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "date"
+                  || Filters[key] == "datetime"
+                  || Filters[key] == "time"){
+                  try{
+                    if (key in features[0].properties){
+                      HTMLkey = key.replace(/[&\/\\#,+()$~%.'":*?<>{} ]/g, '');
+                      startdate = document.getElementById("dat_" +
+                        HTMLkey + "_date1").value.replace(" ", "T");
+                      enddate = document.getElementById("dat_" +
+                        HTMLkey + "_date2").value.replace(" ", "T");
+                      for (i = features.length - 1; i >= 0; --i){
+                        if (features[i].properties[key] < startdate
+                          || features[i].properties[key] > enddate){
+                          features.splice(i,1);
+                        }
+                      }
+                    }
+                  } catch(err){
+                  }
+                }
+              }
+            } catch(err){
+            }
+          this[lyr["options"]["layerName"]].clearLayers();
+          this[lyr["options"]["layerName"]].addData(features);
+        var i = 0;
+        layer_District_2.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['district'] !== null?String('<div style="color: #323232; font-size: 11pt; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['district']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_District_2'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        var i = 0;
+        layer_County_3.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['county'] !== null?String('<div style="color: #323232; font-size: 11pt; font-weight: bold; font-family: \'Open Sans\', sans-serif;">' + layer.feature.properties['county']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_County_3'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+          }
+          })
+        }
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_faci_typ = document.createElement('div');
+            div_faci_typ.id = "div_faci_typ";
+            div_faci_typ.className= "filterselect";
+            document.getElementById("menu").appendChild(div_faci_typ);
+            sel_faci_typ = document.createElement('select');
+            sel_faci_typ.multiple = true;
+            sel_faci_typ.size = 5;
+            sel_faci_typ.id = "sel_faci_typ";
+            var faci_typ_options_str = "<option value='' unselected></option>";
+            sel_faci_typ.onchange = function(){filterFunc()};
+            faci_typ_options_str  += '<option value="20-foot Container">20-foot Container</option>';
+            faci_typ_options_str  += '<option value="40-foot Container">40-foot Container</option>';
+            faci_typ_options_str  += '<option value="Concrete Insulated Building">Concrete Insulated Building</option>';
+            faci_typ_options_str  += '<option value="Other">Other</option>';
+            faci_typ_options_str  += '<option value="Prefab Insulated Building">Prefab Insulated Building</option>';
+            sel_faci_typ.innerHTML = faci_typ_options_str;
+            div_faci_typ.appendChild(sel_faci_typ);
+            var lab_faci_typ = document.createElement('div');
+            lab_faci_typ.innerHTML = 'faci_typ';
+            lab_faci_typ.className = 'filterlabel';
+            div_faci_typ.appendChild(lab_faci_typ);
+            var reset_faci_typ = document.createElement('div');
+            reset_faci_typ.innerHTML = 'clear filter';
+            reset_faci_typ.className = 'filterlabel';
+            reset_faci_typ.onclick = function() {
+                var options = document.getElementById("sel_faci_typ").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_faci_typ.appendChild(reset_faci_typ);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_owner_nati = document.createElement('div');
+            div_owner_nati.id = "div_owner_nati";
+            div_owner_nati.className= "filterselect";
+            document.getElementById("menu").appendChild(div_owner_nati);
+            sel_owner_nati = document.createElement('select');
+            sel_owner_nati.multiple = true;
+            sel_owner_nati.size = 2;
+            sel_owner_nati.id = "sel_owner_nati";
+            var owner_nati_options_str = "<option value='' unselected></option>";
+            sel_owner_nati.onchange = function(){filterFunc()};
+            owner_nati_options_str  += '<option value="Liberian">Liberian</option>';
+            owner_nati_options_str  += '<option value="foreigner">foreigner</option>';
+            sel_owner_nati.innerHTML = owner_nati_options_str;
+            div_owner_nati.appendChild(sel_owner_nati);
+            var lab_owner_nati = document.createElement('div');
+            lab_owner_nati.innerHTML = 'owner_nati';
+            lab_owner_nati.className = 'filterlabel';
+            div_owner_nati.appendChild(lab_owner_nati);
+            var reset_owner_nati = document.createElement('div');
+            reset_owner_nati.innerHTML = 'clear filter';
+            reset_owner_nati.className = 'filterlabel';
+            reset_owner_nati.onclick = function() {
+                var options = document.getElementById("sel_owner_nati").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_owner_nati.appendChild(reset_owner_nati);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_owner_type = document.createElement('div');
+            div_owner_type.id = "div_owner_type";
+            div_owner_type.className= "filterselect";
+            document.getElementById("menu").appendChild(div_owner_type);
+            sel_owner_type = document.createElement('select');
+            sel_owner_type.multiple = true;
+            sel_owner_type.size = 5;
+            sel_owner_type.id = "sel_owner_type";
+            var owner_type_options_str = "<option value='' unselected></option>";
+            sel_owner_type.onchange = function(){filterFunc()};
+            owner_type_options_str  += '<option value="Cooperative/Association">Cooperative/Association</option>';
+            owner_type_options_str  += '<option value="Individual">Individual</option>';
+            owner_type_options_str  += '<option value="Joint Venture">Joint Venture</option>';
+            owner_type_options_str  += '<option value="Other">Other</option>';
+            owner_type_options_str  += '<option value="Private Company">Private Company</option>';
+            sel_owner_type.innerHTML = owner_type_options_str;
+            div_owner_type.appendChild(sel_owner_type);
+            var lab_owner_type = document.createElement('div');
+            lab_owner_type.innerHTML = 'owner_type';
+            lab_owner_type.className = 'filterlabel';
+            div_owner_type.appendChild(lab_owner_type);
+            var reset_owner_type = document.createElement('div');
+            reset_owner_type.innerHTML = 'clear filter';
+            reset_owner_type.className = 'filterlabel';
+            reset_owner_type.onclick = function() {
+                var options = document.getElementById("sel_owner_type").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_owner_type.appendChild(reset_owner_type);
         resetLabels([layer_District_2,layer_County_3]);
         map.on("zoomend", function(){
             resetLabels([layer_District_2,layer_County_3]);
